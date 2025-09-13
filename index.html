@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Number Guessing Game</title>
+
+  <!-- Simple modern styles -->
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #0b1220;
+      --accent: #22c55e;
+      --muted: #94a3b8;
+      --glass: rgba(255,255,255,0.03);
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; font-family: Inter, system-ui, Arial, sans-serif; }
+    body {
+      margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+      background: linear-gradient(180deg,#071028 0%, #071634 100%);
+      color: #e6eef8;
+      padding: 24px;
+    }
+
+    .card {
+      width: 100%;
+      max-width:480px;
+      background: radial-gradient(1200px 400px at 10% 10%, rgba(34,197,94,0.06), transparent 10%),
+                  linear-gradient(180deg,var(--card), rgba(11,18,32,0.9));
+      border-radius: var(--radius);
+      padding: 28px;
+      box-shadow: 0 8px 30px rgba(2,6,23,0.7), inset 0 1px 0 rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.03);
+    }
+
+    h1 {
+      margin:0 0 6px 0; font-size:20px; letter-spacing:0.2px;
+    }
+    p.lead { margin:0 0 18px 0; color:var(--muted); font-size:13px; }
+
+    .controls { display:flex; gap:8px; margin-bottom:16px; }
+    input[type="number"] {
+      flex:1;
+      padding:12px 14px;
+      border-radius:10px;
+      border: none;
+      outline: none;
+      background: var(--glass);
+      color: inherit;
+      font-size:15px;
+    }
+    button {
+      background: linear-gradient(180deg,var(--accent), #16a34a);
+      border: none;
+      color: white;
+      padding: 10px 14px;
+      border-radius:10px;
+      cursor:pointer;
+      font-weight:600;
+      box-shadow: 0 6px 18px rgba(34,197,94,0.12);
+    }
+    button.ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid rgba(255,255,255,0.04);
+      box-shadow: none;
+      font-weight:600;
+    }
+
+    .status {
+      background: rgba(255,255,255,0.02);
+      padding:12px;
+      border-radius:10px;
+      margin-bottom:14px;
+      font-size:15px;
+    }
+    .hint { font-weight:700; color: #ffd166; }
+    .success { color: #bbf7d0; font-weight:700; }
+    .meta { color:var(--muted); font-size:13px; margin-top:6px; }
+
+    footer { margin-top:12px; display:flex; justify-content:space-between; gap:8px; align-items:center; }
+    .small { color:var(--muted); font-size:13px; }
+
+    @media (max-width:520px) {
+      .card { padding:18px; border-radius:12px; }
+      input[type="number"] { padding:10px; }
+      button { padding:8px 10px; font-size:14px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="card" role="main">
+    <h1>Number Guessing Game</h1>
+    <p class="lead">Guess the number between <strong>1</strong> and <strong>100</strong>. The game will tell you whether your guess is too high or too low.</p>
+
+    <div class="status" id="status">Press <strong>Start Game</strong> to begin.</div>
+
+    <div class="controls" id="controls" style="display:none;">
+      <input id="guessInput" type="number" min="1" max="100" placeholder="Enter your guess (1-100)" />
+      <button id="checkBtn">Check</button>
+      <button class="ghost" id="restartBtn">Restart</button>
+    </div>
+
+    <div style="display:flex; gap:10px; align-items:center; margin-bottom:6px;">
+      <button id="startBtn">Start Game</button>
+      <div class="small" style="margin-left:auto;">Attempts: <span id="attempts">0</span></div>
+    </div>
+
+    <div class="meta" id="meta">Best score not recorded yet.</div>
+
+    <footer>
+      <div class="small">Designed for BCA Project</div>
+      <div class="small">You can host this on Replit or GitHub Pages</div>
+    </footer>
+  </main>
+
+  <!-- JavaScript logic -->
+  <script>
+    (function () {
+      const statusEl = document.getElementById('status');
+      const controlsEl = document.getElementById('controls');
+      const startBtn = document.getElementById('startBtn');
+      const checkBtn = document.getElementById('checkBtn');
+      const restartBtn = document.getElementById('restartBtn');
+      const input = document.getElementById('guessInput');
+      const attemptsEl = document.getElementById('attempts');
+      const metaEl = document.getElementById('meta');
+
+      let secret = null;
+      let attempts = 0;
+      let best = localStorage.getItem('ng_best') ? Number(localStorage.getItem('ng_best')) : null;
+
+      function newGame() {
+        // generate between 1 and 100
+        secret = Math.floor(Math.random() * 100) + 1;
+        attempts = 0;
+        attemptsEl.textContent = attempts;
+        statusEl.innerHTML = "Game started — enter your guess!";
+        controlsEl.style.display = '';
+        input.value = '';
+        input.focus();
+        updateMeta();
+        // for debugging: console.log('secret', secret);
+      }
+
+      function endGame(won) {
+        controlsEl.style.display = 'none';
+        if (won) {
+          statusEl.innerHTML = `<span class="success">🎉 Correct! The number was ${secret}.</span>`;
+          if (best === null || attempts < best) {
+            best = attempts;
+            localStorage.setItem('ng_best', String(best));
+            metaEl.textContent = `New best score: ${best} attempts`;
+          } else {
+            metaEl.textContent = `Your attempts: ${attempts}. Best: ${best} attempts`;
+          }
+        } else {
+          statusEl.textContent = 'Game ended.';
+        }
+      }
+
+      function checkGuess() {
+        const val = Number(input.value);
+        if (!val || val < 1 || val > 100) {
+          statusEl.innerHTML = '<span class="hint">Please enter a number between 1 and 100.</span>';
+          input.focus();
+          return;
+        }
+        attempts++;
+        attemptsEl.textContent = attempts;
+
+        if (val === secret) {
+          endGame(true);
+        } else if (val > secret) {
+          statusEl.innerHTML = '<span class="hint">Too High! Try a smaller number.</span>';
+          input.value = '';
+          input.focus();
+        } else {
+          statusEl.innerHTML = '<span class="hint">Too Low! Try a bigger number.</span>';
+          input.value = '';
+          input.focus();
+        }
+      }
+
+      function updateMeta() {
+        if (best !== null) {
+          metaEl.textContent = `Best attempts so far: ${best}`;
+        } else {
+          metaEl.textContent = 'Best attempts not recorded yet.';
+        }
+      }
+
+      // Events
+      startBtn.addEventListener('click', () => newGame());
+      checkBtn.addEventListener('click', () => checkGuess());
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkGuess(); });
+      restartBtn.addEventListener('click', () => newGame());
+
+      // initialize
+      updateMeta();
+    })();
+  </script>
+</body>
+</html>
